@@ -1,0 +1,12 @@
+.tooltip {
+    position: absolute;
+    background-color: white;
+    border: 1px solid #ccc;
+    padding: 5px;
+    display: none;
+    pointer-events: none;
+}
+.annotation {
+    font-size: 12px;
+    fill: red;
+}
