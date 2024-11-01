@@ -29,38 +29,88 @@ app.get('/api/fred', async (req, res) => {
     }
 });
 
+// const fetchMovieDetails = async (movieId) => {
+//     const apiUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&language=en-US`;
+
+//     const response = await fetch(apiUrl);
+//     if (!response.ok) {
+//         throw new Error('Error fetching movie details from TMDb');
+//     }
+//     return response.json();
+// };
+
+// Function to fetch movie details, including genres
 const fetchMovieDetails = async (movieId) => {
     const apiUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&language=en-US`;
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-        throw new Error('Error fetching movie details from TMDb');
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error('Error fetching movie details from TMDb');
+        }
+        const movie = await response.json();
+
+        // Return movie details including genres
+        return {
+            title: movie.title,
+            revenue: movie.revenue || 0, // Use 0 if revenue is not available
+            release_date: movie.release_date,
+            genres: movie.genres.map(genre => genre.name) // Extract the genre names
+        };
+    } catch (error) {
+        console.error('Error fetching movie details:', error);
+        return null; // Return null in case of an error
     }
-    return response.json();
 };
 
-// Function to fetch top 10 movies by revenue for a given year
+
+// // Function to fetch top 10 movies by revenue for a given year
+// const fetchTopMoviesByYear = async (year) => {
+//     const apiUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${tmdbApiKey}&language=en-US&sort_by=revenue.desc&primary_release_year=${year}&page=1`;
+
+//     const response = await fetch(apiUrl);
+//     if (!response.ok) {
+//         throw new Error('Error fetching data from TMDb');
+//     }
+//     const data = await response.json();
+
+//     // Get the top 10 movies by revenue
+//     const topMovies = data.results.slice(0, 10);
+    
+//     // Fetch additional details for each movie to get revenue
+//     const detailedMovies = await Promise.all(topMovies.map(movie => fetchMovieDetails(movie.id)));
+
+//     return detailedMovies.map(movie => ({
+//         title: movie.title,
+//         revenue: movie.revenue || 0, // Use 0 if revenue is not available
+//         release_date: movie.release_date,
+//     }));
+// };
+
+// Fetch top 10 movies by revenue for a given year
 const fetchTopMoviesByYear = async (year) => {
     const apiUrl = `https://api.themoviedb.org/3/discover/movie?api_key=${tmdbApiKey}&language=en-US&sort_by=revenue.desc&primary_release_year=${year}&page=1`;
 
-    const response = await fetch(apiUrl);
-    if (!response.ok) {
-        throw new Error('Error fetching data from TMDb');
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            throw new Error('Error fetching data from TMDb');
+        }
+        const data = await response.json();
+
+        // Get the top 10 movies by revenue
+        const topMovies = data.results.slice(0, 10);
+
+        // Fetch additional details for each movie, including genres
+        const detailedMovies = await Promise.all(topMovies.map(movie => fetchMovieDetails(movie.id)));
+
+        return detailedMovies; // Now includes genres for each movie
+    } catch (error) {
+        console.error('Error fetching top movies by year:', error);
+        return [];
     }
-    const data = await response.json();
-
-    // Get the top 10 movies by revenue
-    const topMovies = data.results.slice(0, 10);
-    
-    // Fetch additional details for each movie to get revenue
-    const detailedMovies = await Promise.all(topMovies.map(movie => fetchMovieDetails(movie.id)));
-
-    return detailedMovies.map(movie => ({
-        title: movie.title,
-        revenue: movie.revenue || 0, // Use 0 if revenue is not available
-        release_date: movie.release_date,
-    }));
 };
+
 
 // Route to fetch top 10 movies by revenue for all available years
 app.get('/api/top-movies/all', async (req, res) => {
@@ -73,6 +123,8 @@ app.get('/api/top-movies/all', async (req, res) => {
             const topMovies = await fetchTopMoviesByYear(year);
             allTopMovies[year] = topMovies; // Store the top movies for each year
         }
+
+        console.log("All top movies data:", allTopMovies);  // Log the data to check if the server has it
 
         res.json(allTopMovies); // Send the top movies for all years as JSON response
     } catch (error) {
