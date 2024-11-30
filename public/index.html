@@ -5,22 +5,30 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FRED API Fetch Example</title>
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style src="style.css"></style>
+  <link rel="stylesheet" type="text/css" href="style.css">
 </head>
 <body>
   <h1>FRED API Data Fetch</h1>
   <p>Open the console to view the fetched data.</p>
 
-  <!-- Bubble Chart -->
-  <div id="chart1"></div>
-  <div class="tooltip" id="tooltip"></div>
-  <script src="bubbleChart.js"></script>
+  <!-- Bubble Chart
+  <div>
+    <div id="bubbleChart"></div>
+    <button id="toggleInflationButton">Toggle Inflation Adjustment</button>
+    <div id="tooltip" style="position: absolute; display: none;"></div>
+    <script src="bubbleChart.js"></script>
+  </div> -->
+
+  <!-- Network Graph -->
+  <body>
+    <div id="networktooltip" class="tooltip" style="position: absolute; display: none;"></div>
+    <div id="networkChart"></div>
+    <script src="networkChart.js"></script>
+  </body> 
+
+
 
   <!-- Stacked Bar Chart -->
-
-  <h1>Top Genre Revenue by Year</h1>
-  <div id="chart3"></div>
-  <script src="stackedBarChart.js"></script>
 
 </body>
 </html>

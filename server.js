@@ -7,7 +7,7 @@ const PORT = 3000;
 // Middleware to serve static files from the public directory
 app.use(express.static('public'));
 
-const fredApiKey = 'd74aa68579c6cde2bc68ff66cf93b951'; // Replace with your actual API key
+const fredApiKey = 'd74aa68579c6cde2bc68ff66cf93b951';
 const tmdbApiKey = '79fbbd417c17755325c1335c37da7270';
 
 
@@ -29,6 +29,25 @@ app.get('/api/fred', async (req, res) => {
     }
 });
 
+// Endpoint to fetch inflation data (CPI) from FRED API
+app.get('/api/inflation', async (req, res) => {
+    const seriesId = 'CPIAUCSL'; // CPI for All Urban Consumers
+    const apiUrl = `https://api.stlouisfed.org/fred/series/observations?series_id=${seriesId}&api_key=${fredApiKey}&file_type=json`;
+
+    try {
+        const response = await fetch(apiUrl);
+        if (!response.ok) {
+            return res.status(response.status).json({ error: 'Error fetching inflation data from FRED' });
+        }
+        const data = await response.json();
+        res.json(data); // Send CPI data as JSON response
+    } catch (error) {
+        console.error('Error fetching inflation data:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 // const fetchMovieDetails = async (movieId) => {
 //     const apiUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&language=en-US`;
 
@@ -41,27 +60,48 @@ app.get('/api/fred', async (req, res) => {
 
 // Function to fetch movie details, including genres
 const fetchMovieDetails = async (movieId) => {
-    const apiUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}&language=en-US`;
+    const movieUrl = `https://api.themoviedb.org/3/movie/${movieId}?api_key=${tmdbApiKey}`;
+    const creditsUrl = `https://api.themoviedb.org/3/movie/${movieId}/credits?api_key=${tmdbApiKey}`;
 
     try {
-        const response = await fetch(apiUrl);
-        if (!response.ok) {
-            throw new Error('Error fetching movie details from TMDb');
-        }
-        const movie = await response.json();
+        // Fetch basic movie details
+        const [movieResponse, creditsResponse] = await Promise.all([
+            fetch(movieUrl),
+            fetch(creditsUrl),
+        ]);
 
-        // Return movie details including genres
+        if (!movieResponse.ok || !creditsResponse.ok) {
+            throw new Error('Error fetching movie details or credits from TMDb');
+        }
+
+        const movieData = await movieResponse.json();
+        const creditsData = await creditsResponse.json();
+
+        // Extract the genres as names
+        const genres = movieData.genres.map(genre => genre.name);
+
+        // Extract the top 10 actors and the director
+        const actors = creditsData.cast
+            .slice(0, 10) // Take the first 10 credited actors
+            .map(actor => actor.name); // Get actor names
+        const director = creditsData.crew.find(member => member.job === 'Director')?.name || 'Unknown';
+
+        // Build the detailed movie object
         return {
-            title: movie.title,
-            revenue: movie.revenue || 0, // Use 0 if revenue is not available
-            release_date: movie.release_date,
-            genres: movie.genres.map(genre => genre.name) // Extract the genre names
+            title: movieData.title,
+            revenue: movieData.revenue,
+            release_date: movieData.release_date,
+            genres: genres,
+            actors: actors,
+            director: director,
+            poster: `https://image.tmdb.org/t/p/w500${movieData.poster_path}`, // TMDB poster URL
         };
     } catch (error) {
         console.error('Error fetching movie details:', error);
-        return null; // Return null in case of an error
+        return null; // Return null for failed requests to handle gracefully
     }
 };
+
 
 
 // // Function to fetch top 10 movies by revenue for a given year

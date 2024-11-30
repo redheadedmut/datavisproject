@@ -10,3 +10,65 @@
     font-size: 12px;
     fill: red;
 }
+
+#bubbleChart {
+    display: flex;
+    flex-direction: row; /* Places the chart and legend side by side */
+    align-items: flex-start; /* Align legend and chart at the top */
+    gap: 20px; /* Adds space between the chart and the legend */
+}
+
+/* Styling for the SVG */
+#bubbleChart svg {
+    background-color: #f9f9f9; /* Light background for better contrast */
+    border: 1px solid #ddd; /* Subtle border for SVG */
+    border-radius: 5px; /* Slightly rounded corners */
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Adds a soft shadow */
+}
+
+/* Tooltip styling */
+#tooltip {
+    position: absolute;
+    display: none;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 10;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Legend styling */
+.legend {
+    display: flex;
+    flex-direction: column;
+    max-width: 150px;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.legend-item:hover {
+    transform: scale(1.05); /* Slight zoom effect on hover */
+}
+
+.legend-item.active .legend-text {
+    font-weight: bold;
+}
+
+.legend-color {
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    border-radius: 3px; /* Rounded color box */
+    border: 1px solid #aaa;
+}
