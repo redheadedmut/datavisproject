@@ -1,14 +1,16 @@
 import express from 'express'; // Import express
 import fetch from 'node-fetch'; // Import node-fetch
 
+import 'dotenv/config';
+
 const app = express();
 const PORT = 3000;
 
 // Middleware to serve static files from the public directory
 app.use(express.static('public'));
 
-const fredApiKey = 'd74aa68579c6cde2bc68ff66cf93b951';
-const tmdbApiKey = '79fbbd417c17755325c1335c37da7270';
+const fredApiKey = process.env.FRED_KEY;
+const tmdbApiKey = process.env.TMDB_KEY;
 
 
 // Route to fetch FRED data
