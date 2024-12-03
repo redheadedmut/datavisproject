@@ -56,6 +56,26 @@ function drawBubbleChart(data) {
         .append("g")
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
+        window.addEventListener("updateCharts", () => {
+            svg.selectAll("circle")
+                .transition()
+                .duration(500)
+                .style("opacity", d => {
+                    if (!sharedState.selectedGenre) {
+                        console.log("No genre selected. Showing all bubbles.");
+                        return 1; // Reset if no genre is selected
+                    }
+        
+                    const isSelected = d.genres.includes(sharedState.selectedGenre);
+                    
+                    if (isSelected) {
+                        console.log("Selected Bubble Data:", d); // Log the data of the selected bubbles
+                    }
+        
+                    return isSelected ? 1 : 0.2; // Highlight matching bubbles
+                });
+        });
+        
     // Set the ranges for the x and y axes
     const x = d3.scaleTime()
         .domain(d3.extent(data, d => d.release))

@@ -1,32 +1,38 @@
 // Fetch top movies and generate the stacked bar chart, grouped by genre
 async function fetchDataAndDrawStackedBarChart() {
-    const movieDataResponse = await fetch('http://localhost:3000/api/top-movies/all');
-    const movieData = await movieDataResponse.json();
+    try {
+        // Fetch movie data from the server
+        const movieDataResponse = await fetch('http://localhost:3000/api/top-movies/all');
+        const movieData = await movieDataResponse.json();
 
-    // Group movies by year and aggregate revenue by genre for each year
-    const moviesByYear = Object.keys(movieData).map(year => {
-        const movies = movieData[year];
+        // Group movies by year and aggregate revenue by genre
+        const moviesByYear = Object.keys(movieData).map(year => {
+            const movies = movieData[year];
+            const genreRevenue = {};
 
-        // Create a genre-based aggregation of revenue for the year
-        const genreRevenue = {};
-
-        movies.forEach(movie => {
-            movie.genres.forEach(genre => {
-                if (!genreRevenue[genre]) {
-                    genreRevenue[genre] = 0;
-                }
-                genreRevenue[genre] += movie.revenue;
+            movies.forEach(movie => {
+                if (!movie.genres || !movie.revenue) return; // Skip invalid movies
+                movie.genres.forEach(genre => {
+                    if (!genreRevenue[genre]) {
+                        genreRevenue[genre] = 0;
+                    }
+                    genreRevenue[genre] += movie.revenue;
+                });
             });
+
+            return {
+                year: parseInt(year),
+                ...genreRevenue
+            };
         });
 
-        // Format data for stacking
-        return {
-            year: parseInt(year),
-            ...genreRevenue
-        };
-    });
+        // Log the processed data to verify
+        console.log("Movies by Year:", moviesByYear);
 
-    drawStackedBarChart(moviesByYear);
+        drawStackedBarChart(moviesByYear);
+    } catch (error) {
+        console.error("Error fetching or processing data:", error);
+    }
 }
 
 // Function to draw the D3.js stacked bar chart
@@ -35,7 +41,7 @@ function drawStackedBarChart(data) {
     const width = 900 - margin.left - margin.right;
     const height = 500 - margin.top - margin.bottom;
 
-    const svg = d3.select("#chart3")
+    const svg = d3.select("#stackedBarChart")
         .append("svg")
         .attr("width", width + margin.left + margin.right)
         .attr("height", height + margin.top + margin.bottom)
@@ -43,12 +49,12 @@ function drawStackedBarChart(data) {
         .attr("transform", `translate(${margin.left},${margin.top})`);
 
     // Get all unique genres from the data
-    const genres = Object.keys(data[0]).filter(key => key !== 'year');
+    const genres = [...new Set(data.flatMap(d => Object.keys(d).filter(key => key !== 'year')))];
 
     // Define color scale for genres
     const color = d3.scaleOrdinal()
         .domain(genres)
-        .range(d3.schemeCategory10); // Assigns a unique color for each genre
+        .range(d3.schemeCategory10);
 
     // X and Y scales
     const x = d3.scaleBand()
@@ -57,7 +63,7 @@ function drawStackedBarChart(data) {
         .padding(0.1);
 
     const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d3.sum(genres, genre => d[genre]))])
+        .domain([0, d3.max(data, d => d3.sum(genres, genre => d[genre] || 0))])
         .range([height, 0]);
 
     // Create X axis (years)
@@ -76,17 +82,15 @@ function drawStackedBarChart(data) {
 
     const layers = stack(data);
 
-    // Tooltip setup
-    const tooltip = d3.select("#tooltip");
-
-    // Create stacked bars with transitions
-    const bars = svg.selectAll(".layer")
+    // Create stacked bars with tooltip functionality
+    const layersSelection = svg.selectAll(".layer")
         .data(layers)
         .enter()
         .append("g")
         .attr("class", "layer")
-        .attr("fill", d => color(d.key))
-        .selectAll("rect")
+        .attr("fill", d => color(d.key));
+
+    layersSelection.selectAll("rect")
         .data(d => d)
         .enter()
         .append("rect")
@@ -94,29 +98,47 @@ function drawStackedBarChart(data) {
         .attr("y", d => y(d[1]))
         .attr("height", d => y(d[0]) - y(d[1]))
         .attr("width", x.bandwidth())
+        .on("click", function (event, d) {
+            const genre = d3.select(event.target.parentNode).datum().key; // Get the genre of the clicked segment
+            console.log("Selected Genre:", genre);
+
+            if (sharedState.selectedGenre === genre) {
+                sharedState.selectedGenre = null; // Deselect the genre
+                console.log("Deselected Genre:", genre);
+            } else {
+                sharedState.selectedGenre = genre; // Select the clicked genre
+                console.log("Selected Genre:", genre);
+            }
+        
+            updateAllCharts(); // Notify other charts to update
+        })
         .on("mouseover", (event, d) => {
             const genre = d3.select(event.target.parentNode).datum().key;
             const revenue = d[1] - d[0];
-            tooltip.style("visibility", "visible")
+            d3.select("#stackedBarTooltip")
+                .style("visibility", "visible")
                 .html(`<strong>Genre:</strong> ${genre}<br><strong>Revenue:</strong> $${revenue.toLocaleString()}`)
                 .style("left", `${event.pageX + 10}px`)
                 .style("top", `${event.pageY - 30}px`);
+
+                // console.log("Mouseover event triggered", event, d);
         })
         .on("mousemove", event => {
-            tooltip.style("left", `${event.pageX + 10}px`)
+            d3.select("#stackedBarTooltip")
+                .style("left", `${event.pageX + 10}px`)
                 .style("top", `${event.pageY - 30}px`);
+
+                // console.log("Mousemove event triggered", event);
         })
         .on("mouseout", () => {
-            tooltip.style("visibility", "hidden");
+            d3.select("#stackedBarTooltip").style("visibility", "hidden");
+            // console.log("Mouseout event triggered");
         });
 
-    // Add legend with click functionality to filter genres
+    // Add legend with interactivity
     const legend = svg.append("g")
         .attr("transform", `translate(${width + 20}, 0)`);
-
-    let activeGenres = new Set(genres);  // Set of active genres
-
-    legend.selectAll("rect")
+        legend.selectAll("rect")
         .data(genres)
         .enter()
         .append("rect")
@@ -126,19 +148,24 @@ function drawStackedBarChart(data) {
         .attr("height", 18)
         .attr("fill", d => color(d))
         .style("cursor", "pointer")
-        .on("click", function(event, d) {
-            if (activeGenres.has(d)) {
-                activeGenres.delete(d);  // Remove genre from active list
-                d3.select(this).attr("fill", "#ccc");  // Mark legend as inactive
+        .on("click", function (event, d) {
+            if (selectedLegendGenre === d) {
+                selectedLegendGenre = null; // Deselect if the same genre is clicked
+                console.log("Deselected Genre:", d);
             } else {
-                activeGenres.add(d);  // Add genre back to active list
-                d3.select(this).attr("fill", color(d));  // Reset legend color
+                selectedLegendGenre = d; // Update to the clicked genre
+                console.log("Selected Genre:", d);
             }
-
-            // Update the chart based on active genres
-            updateBars();
+    
+            // Update bar opacity based on the selected genre
+            svg.selectAll(".layer")
+                .transition()
+                .duration(500)
+                .attr("opacity", layer => (selectedLegendGenre && layer.key !== selectedLegendGenre ? 0.2 : 1));
         });
-
+    
+    let selectedLegendGenre = null; 
+    // Add text labels for the legend
     legend.selectAll("text")
         .data(genres)
         .enter()
@@ -148,36 +175,21 @@ function drawStackedBarChart(data) {
         .attr("dy", "0.35em")
         .style("cursor", "pointer")
         .text(d => d)
-        .on("click", function(event, d) {
-            if (activeGenres.has(d)) {
-                activeGenres.delete(d);  // Remove genre from active list
-                d3.select(this.previousSibling).attr("fill", "#ccc");  // Mark legend as inactive
+        .on("click", function (event, d) {
+            if (selectedLegendGenre === d) {
+                selectedLegendGenre = null; // Deselect if the same genre is clicked
+                console.log("Deselected Genre:", d);
             } else {
-                activeGenres.add(d);  // Add genre back to active list
-                d3.select(this.previousSibling).attr("fill", color(d));  // Reset legend color
+                selectedLegendGenre = d; // Update to the clicked genre
+                console.log("Selected Genre:", d);
             }
-
-            // Update the chart based on active genres
-            updateBars();
+    
+            // Update bar opacity based on the selected genre
+            svg.selectAll(".layer")
+                .transition()
+                .duration(500)
+                .attr("opacity", layer => (selectedLegendGenre && layer.key !== selectedLegendGenre ? 0.2 : 1));
         });
-
-    // Function to update the bars based on the active genres
-    function updateBars() {
-        const updatedStack = d3.stack()
-            .keys(Array.from(activeGenres))
-            .value((d, key) => d[key] || 0);
-
-        const updatedLayers = updatedStack(data);
-
-        svg.selectAll(".layer")
-            .data(updatedLayers)
-            .selectAll("rect")
-            .data(d => d)
-            .transition()
-            .duration(500)  // Smooth transition when filtering
-            .attr("y", d => y(d[1]))
-            .attr("height", d => y(d[0]) - y(d[1]));
-    }
 }
 
 // Fetch data and draw the chart on load
