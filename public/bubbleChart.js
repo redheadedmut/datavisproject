@@ -1,7 +1,7 @@
 // Fetch movie and inflation data, then generate the bubble chart
 async function fetchDataAndDrawBubbleChart() {
-    const movieDataResponse = await fetch('http://localhost:3000/api/top-movies/all');
-    const inflationDataResponse = await fetch('http://localhost:3000/api/inflation');
+    const movieDataResponse = await fetch('/api/top-movies/all');
+    const inflationDataResponse = await fetch('/api/inflation');
 
     const movieData = await movieDataResponse.json();
     const inflationData = await inflationDataResponse.json();

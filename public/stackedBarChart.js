@@ -2,7 +2,7 @@
 async function fetchDataAndDrawStackedBarChart() {
     try {
         // Fetch movie data from the server
-        const movieDataResponse = await fetch('http://localhost:3000/api/top-movies/all');
+        const movieDataResponse = await fetch('/api/top-movies/all');
         const movieData = await movieDataResponse.json();
 
         // Group movies by year and aggregate revenue by genre
