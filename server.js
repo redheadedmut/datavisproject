@@ -4,7 +4,7 @@ import fetch from 'node-fetch'; // Import node-fetch
 import 'dotenv/config';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // Middleware to serve static files from the public directory
 app.use(express.static('public'));
